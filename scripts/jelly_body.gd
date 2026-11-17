@@ -1,5 +1,6 @@
 extends Node2D
-## Unified jelly: overlapping same-color radial metaball envelopes (no part seams).
+## One continuous jelly: same-color overlapping disks along torso + deforming limbs.
+## Overlaps erase seams; stretch springs move limb endpoints of the same mass.
 
 @export var jelly_color := Color(1.0, 0.45, 0.7, 1.0)
 @export var jelly_deep := Color(0.86, 0.26, 0.52, 1.0)
@@ -20,7 +21,7 @@ var torso_ry: float = 12.0
 var limb_r: float = 6.0
 var fat_w: float = 1.0
 
-var _disks_cache: Array = []
+var _disks: Array = []
 
 
 func set_pose(
@@ -45,7 +46,7 @@ func set_pose(
 	torso_ry = p_torso_ry
 	limb_r = p_limb_r
 	fat_w = p_fat
-	_disks_cache = _build_disks()
+	_disks = _build_disks()
 	queue_redraw()
 
 
@@ -53,90 +54,63 @@ func _build_disks() -> Array:
 	var d: Array = []
 	var fw := fat_w
 	var hr := head_r * fw
-	var tr := maxf(torso_rx, torso_ry) * fw
-	var lr := limb_r * fw
+	var tr := maxf(torso_rx, torso_ry) * fw * 1.12
+	var lr := limb_r * fw * 1.28
+
+	# Continuous vertical core (no neck/waist pinch)
+	_bone(d, head_c + Vector2(0, -hr * 0.1), hip_c + Vector2(0, 4), tr * 1.08, 12)
 	d.append([head_c, hr])
-	d.append([torso_c, tr])
-	d.append([hip_c, 8.0 * fw])
-	_add_bone(d, head_c, torso_c, (hr + tr) * 0.4, 5)
-	_add_bone(d, torso_c, hip_c, 9.0 * fw, 5)
-	_add_bone(d, shoulder_l, hand_l, lr, 12)
-	_add_bone(d, shoulder_r, hand_r, lr, 12)
-	_add_bone(d, hip_c + Vector2(-6, 2), foot_l, lr * 1.05, 13)
-	_add_bone(d, hip_c + Vector2(6, 2), foot_r, lr * 1.05, 13)
-	d.append([hand_l, lr * 1.2])
-	d.append([hand_r, lr * 1.2])
-	d.append([foot_l, lr * 1.3])
-	d.append([foot_r, lr * 1.3])
+	d.append([torso_c, tr * 1.12])
+	d.append([hip_c, tr])
+	_bone(d, head_c, torso_c, maxf(hr, tr) * 0.92, 7)
+	_bone(d, torso_c, hip_c, tr * 0.95, 6)
+
+	# Limbs = stretch of same mass (thicker at root)
+	_limb(d, shoulder_l, hand_l, lr * 1.2, lr * 0.9, 14)
+	_limb(d, shoulder_r, hand_r, lr * 1.2, lr * 0.9, 14)
+	_limb(d, hip_c + Vector2(-5, 3), foot_l, lr * 1.25, lr * 1.0, 16)
+	_limb(d, hip_c + Vector2(5, 3), foot_r, lr * 1.25, lr * 1.0, 16)
+	d.append([hand_l, lr * 1.1])
+	d.append([hand_r, lr * 1.1])
+	d.append([foot_l, lr * 1.2])
+	d.append([foot_r, lr * 1.2])
 	return d
 
 
-func _add_bone(d: Array, a: Vector2, b: Vector2, radius: float, steps: int) -> void:
+func _bone(d: Array, a: Vector2, b: Vector2, radius: float, steps: int) -> void:
 	for i in range(steps + 1):
 		var t := float(i) / float(steps)
 		d.append([a.lerp(b, t), radius * (1.0 + 0.1 * sin(t * PI))])
 
 
-func _envelope(origin: Vector2, disks: Array, bins: int = 40) -> PackedVector2Array:
-	# Support-function envelope of disk union (star-shaped from origin)
-	var best: PackedFloat32Array
-	best.resize(bins)
-	for i in bins:
-		best[i] = 2.0
-	for disk in disks:
-		var c: Vector2 = disk[0]
-		var r: float = disk[1]
-		var to := c - origin
-		for i in bins:
-			var ang := TAU * float(i) / float(bins)
-			var dir := Vector2(cos(ang), sin(ang))
-			var s := to.dot(dir) + r
-			if s > best[i]:
-				best[i] = s
-	var pts := PackedVector2Array()
-	for i in bins:
-		var ang := TAU * float(i) / float(bins)
-		pts.append(origin + Vector2(cos(ang), sin(ang)) * best[i])
-	return pts
+func _limb(d: Array, a: Vector2, b: Vector2, r0: float, r1: float, steps: int) -> void:
+	for i in range(steps + 1):
+		var t := float(i) / float(steps)
+		d.append([a.lerp(b, t), lerpf(r0, r1, t) * (1.0 + 0.06 * sin(t * PI))])
 
 
 func _draw() -> void:
-	if _disks_cache.is_empty():
-		_disks_cache = _build_disks()
-	var disks := _disks_cache
+	if _disks.is_empty():
+		_disks = _build_disks()
 	var deep := Color(jelly_deep.r, jelly_deep.g, jelly_deep.b, 1.0)
 	var fill := Color(jelly_color.r, jelly_color.g, jelly_color.b, 1.0)
 
-	# Multiple envelopes from key anchors, SAME opaque color → visually one fused mass
-	# Body+head+arms from torso; each leg from its own foot so crotch can exist via overlap
-	var body_e := _envelope(torso_c, disks, 44)
-	var leg_l_e := _envelope(foot_l.lerp(hip_c, 0.35), disks, 36)
-	var leg_r_e := _envelope(foot_r.lerp(hip_c, 0.35), disks, 36)
-	var arm_l_e := _envelope(hand_l.lerp(shoulder_l, 0.4), disks, 32)
-	var arm_r_e := _envelope(hand_r.lerp(shoulder_r, 0.4), disks, 32)
+	# Soft outer halo (matching color, low alpha) — softens scallops into one mass
+	var halo := Color(jelly_color.r, jelly_color.g, jelly_color.b, 0.22)
+	for disk in _disks:
+		draw_circle(disk[0], disk[1] * 1.14, halo)
 
-	# Deep rim (slight inflate of body)
-	var rim := PackedVector2Array()
-	for p in body_e:
-		rim.append(torso_c + (p - torso_c) * 1.05)
-	draw_colored_polygon(rim, deep)
-	draw_colored_polygon(leg_l_e, deep)
-	draw_colored_polygon(leg_r_e, deep)
+	# Deep rim
+	for disk in _disks:
+		draw_circle(disk[0], disk[1] * 1.05, deep)
 
-	# Main gel fill — identical color erases seams where envelopes overlap
-	draw_colored_polygon(body_e, fill)
-	draw_colored_polygon(leg_l_e, fill)
-	draw_colored_polygon(leg_r_e, fill)
-	draw_colored_polygon(arm_l_e, fill)
-	draw_colored_polygon(arm_r_e, fill)
+	# Opaque gel — identical color ⇒ fused silhouette
+	for disk in _disks:
+		draw_circle(disk[0], disk[1], fill)
 
-	# Soft volume highlights (gradients of the same jelly)
-	draw_circle(head_c + Vector2(-4, -3), head_r * 0.42, Color(1, 1, 1, 0.32))
-	draw_circle(torso_c + Vector2(-3, -2), torso_rx * 0.4, Color(1, 0.88, 0.94, 0.2))
-	draw_circle(hand_l.lerp(shoulder_l, 0.45), limb_r * 0.7, Color(1, 1, 1, 0.14))
-	draw_circle(hand_r.lerp(shoulder_r, 0.45), limb_r * 0.7, Color(1, 1, 1, 0.14))
-	draw_circle(foot_l.lerp(hip_c, 0.4), limb_r * 0.75, Color(1, 1, 1, 0.12))
-	draw_circle(foot_r.lerp(hip_c, 0.4), limb_r * 0.75, Color(1, 1, 1, 0.12))
+	# Soft volume (few highlights)
+	draw_circle(head_c + Vector2(-5, -4), head_r * 0.5, Color(1, 1, 1, 0.26))
+	draw_circle(torso_c + Vector2(-3, 1), maxf(torso_rx, torso_ry) * 0.7, Color(1, 0.88, 0.94, 0.15))
 
 	_draw_face()
 

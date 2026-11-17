@@ -280,17 +280,18 @@ func _push_jelly_pose(fat_w: float) -> void:
 	# Rest proportions in Visual local space (feet ~ y=0)
 	var hip := Vector2(0, -16 + hip_y_offset)
 	var torso := Vector2(0, -30 + hip_y_offset * 0.35)
-	var head := Vector2(0, torso.y - 16.0 * torso_sy)
+	# Keep head nested in torso so stretch never forms a pinched neck
+	var head := Vector2(0, torso.y - 11.0 * torso_sy)
 
 	var sh_l := torso + Vector2(-11.0 * torso_sx, -1.0)
 	var sh_r := torso + Vector2(11.0 * torso_sx, -1.0)
 	# Long thin limbs so metaball grows clear arm/leg lobes of the same mass
-	var arm_rest := 38.0
-	var leg_rest := 34.0
+	var arm_rest := 42.0
+	var leg_rest := 36.0
 
 	# Angles from down (+Y); strong outward bias for arm lobes
-	var arm_ang_l := 1.05 + arm_swing
-	var arm_ang_r := -1.05 - arm_swing
+	var arm_ang_l := 1.15 + arm_swing
+	var arm_ang_r := -1.15 - arm_swing
 	var hand_l := sh_l + Vector2(sin(arm_ang_l), cos(arm_ang_l)) * arm_rest * arm_len
 	var hand_r := sh_r + Vector2(sin(arm_ang_r), cos(arm_ang_r)) * arm_rest * arm_len
 
@@ -323,9 +324,9 @@ func _push_jelly_pose(fat_w: float) -> void:
 			foot_l,
 			foot_r,
 			13.5,
-			10.0 * torso_sx,
-			10.0 * torso_sy,
-			4.6,
+			11.0 * torso_sx,
+			10.5 * torso_sy,
+			6.4,
 			1.0
 		)
 
