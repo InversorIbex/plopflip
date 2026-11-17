@@ -3,7 +3,7 @@
 *.translation
 export_presets.cfg
 export.cfg
-*.import
+# Keep *.import so PNG textures load without a local editor import pass.
 
 # OS / editor
 .DS_Store

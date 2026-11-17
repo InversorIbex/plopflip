@@ -19,11 +19,22 @@ const INVULN_TIME := 1.0
 @onready var leg_r: Node2D = $Visual/Hip/LegR
 @onready var arm_l: Node2D = $Visual/Torso/ArmL
 @onready var arm_r: Node2D = $Visual/Torso/ArmR
+@onready var foot_l: Node2D = $Visual/Hip/LegL/Foot
+@onready var foot_r: Node2D = $Visual/Hip/LegR/Foot
+@onready var hand_l: Node2D = $Visual/Torso/ArmL/Hand
+@onready var hand_r: Node2D = $Visual/Torso/ArmR/Hand
 @onready var body_shape: CollisionShape2D = $CollisionShape2D
 @onready var crouch_shape: CollisionShape2D = $CrouchShape
 @onready var tongue: Area2D = $Tongue
 @onready var tongue_visual: Line2D = $Tongue/TongueLine
 @onready var tongue_tip: CollisionShape2D = $Tongue/Tip
+
+const LEG_REST_LEN := 52.0
+const ARM_REST_LEN := 46.0
+const HIP_BASE_Y := -20.0
+const TORSO_BASE_Y := -34.0
+const HEAD_BASE_Y := -22.0
+const VISUAL_SIZE := 1.15
 
 var facing: float = 1.0
 var coyote_timer: float = 0.0
@@ -278,45 +289,54 @@ func _update_limb_feel(delta: float) -> void:
 
 	hip_y_offset = move_toward(hip_y_offset, target_hip_y, delta * 80.0)
 
-	# Apply facing on root only (no whole-body Y squash). Slight uniform size for readable limbs.
+	# Facing / fat width on root only (limbs stretch separately)
 	var fat_w := GameState.width_mult()
-	const VISUAL_SIZE := 1.35
 	visual.scale = Vector2(facing * fat_w * VISUAL_SIZE, VISUAL_SIZE)
 
 	# Hip drops when legs compress so feet stay planted
-	hip.position = Vector2(0, -18 + hip_y_offset)
-	torso.position = Vector2(0, -30 + hip_y_offset * 0.35)
+	hip.position = Vector2(0, HIP_BASE_Y + hip_y_offset)
+	torso.position = Vector2(0, TORSO_BASE_Y + hip_y_offset * 0.35)
 	torso.scale = Vector2(torso_sx, torso_sy)
+	# Keep head round (counter torso squash) for kawaii face readability
 	head.scale = Vector2(1.0 / maxf(torso_sx, 0.01), 1.0 / maxf(torso_sy, 0.01))
-	head.position = Vector2(0, -16 * torso_sy)
+	head.position = Vector2(0, HEAD_BASE_Y)
 
 	# Legs: length via scale.y; opposite swing when running
-	leg_l.scale = Vector2(1.0, leg_len)
-	leg_r.scale = Vector2(1.0, leg_len)
+	var leg_l_y := leg_len
+	var leg_r_y := leg_len
 	if is_on_floor() and not is_crouching and absf(velocity.x) > 20.0:
-		# Alternate lengths for clear stride
 		var stride := sin(run_phase)
-		leg_l.scale.y = clampf(leg_len * (1.0 + stride * 0.38), 0.35, 2.0)
-		leg_r.scale.y = clampf(leg_len * (1.0 - stride * 0.38), 0.35, 2.0)
+		leg_l_y = clampf(leg_len * (1.0 + stride * 0.38), 0.35, 2.0)
+		leg_r_y = clampf(leg_len * (1.0 - stride * 0.38), 0.35, 2.0)
 		leg_l.rotation = leg_swing
 		leg_r.rotation = -leg_swing
 	elif is_crouching:
-		leg_l.rotation = 0.35
-		leg_r.rotation = -0.35
-		leg_l.scale.y = leg_len
-		leg_r.scale.y = leg_len
+		leg_l.rotation = 0.4
+		leg_r.rotation = -0.4
 	else:
 		leg_l.rotation = move_toward(leg_l.rotation, leg_swing * 0.3, delta * 8.0)
 		leg_r.rotation = move_toward(leg_r.rotation, -leg_swing * 0.3, delta * 8.0)
 
+	leg_l.scale = Vector2(1.0, leg_l_y)
+	leg_r.scale = Vector2(1.0, leg_r_y)
+	# Soft feet stay round while limbs stretch
+	foot_l.scale = Vector2(1.0, 1.0 / maxf(leg_l_y, 0.01))
+	foot_r.scale = Vector2(1.0, 1.0 / maxf(leg_r_y, 0.01))
+	foot_l.position = Vector2(2, LEG_REST_LEN)
+	foot_r.position = Vector2(2, LEG_REST_LEN)
+
 	# Arms: swing + lengthen
 	arm_l.scale = Vector2(1.0, arm_len)
 	arm_r.scale = Vector2(1.0, arm_len)
-	arm_l.rotation = 0.25 + arm_swing
-	arm_r.rotation = -0.25 - arm_swing
+	arm_l.rotation = 0.3 + arm_swing
+	arm_r.rotation = -0.3 - arm_swing
+	hand_l.scale = Vector2(1.0, 1.0 / maxf(arm_len, 0.01))
+	hand_r.scale = Vector2(1.0, 1.0 / maxf(arm_len, 0.01))
+	hand_l.position = Vector2(0, ARM_REST_LEN)
+	hand_r.position = Vector2(0, ARM_REST_LEN)
 
-	# Tongue follows mouth roughly
-	tongue.position = Vector2(0, torso.position.y + head.position.y * torso.scale.y - 2.0)
+	# Tongue follows mouth
+	tongue.position = Vector2(0, torso.position.y + head.position.y * torso.scale.y - 4.0)
 
 	_apply_fat_width()
 
@@ -324,10 +344,10 @@ func _update_limb_feel(delta: float) -> void:
 func _apply_fat_width() -> void:
 	var w := GameState.width_mult()
 	if body_shape.shape is RectangleShape2D:
-		var h := 30.0 if is_crouching else 52.0
-		(body_shape.shape as RectangleShape2D).size = Vector2(28.0 * w, h)
+		var h := 32.0 if is_crouching else 56.0
+		(body_shape.shape as RectangleShape2D).size = Vector2(30.0 * w, h)
 	if crouch_shape.shape is RectangleShape2D:
-		(crouch_shape.shape as RectangleShape2D).size = Vector2(34.0 * w, 30.0)
+		(crouch_shape.shape as RectangleShape2D).size = Vector2(36.0 * w, 32.0)
 
 
 func _post_move_feedback() -> void:

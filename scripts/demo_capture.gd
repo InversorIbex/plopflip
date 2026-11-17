@@ -20,7 +20,6 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	print("DEMO: out_dir=", out_dir)
-	_save("01_spawn_biped")
 
 
 func _physics_process(delta: float) -> void:
@@ -35,11 +34,20 @@ func _physics_process(delta: float) -> void:
 	timer += delta
 	match step:
 		0:
-			player.set_touch_axis(1.0)
-			if timer > 1.0:
-				_save("02_run_stride")
+			# Wait until settled idle (not landing squash)
+			player.set_touch_axis(0.0)
+			if timer > 0.7 and player.is_on_floor() and float(player.leg_len) > 0.85:
+				_save("10_kawaii_idle")
+				_advance()
+			elif timer > 1.5:
+				_save("10_kawaii_idle")
 				_advance()
 		1:
+			player.set_touch_axis(1.0)
+			if timer > 1.0:
+				_save("11_kawaii_run")
+				_advance()
+		2:
 			player.set_touch_axis(0.15)
 			if timer < 0.05:
 				player.press_jump()
@@ -47,26 +55,25 @@ func _physics_process(delta: float) -> void:
 				player.press_jump()
 			var leg := float(player.leg_len)
 			if timer > 0.18 and not player.is_on_floor() and leg >= 1.2:
-				_save("03_jump_legs_long")
+				_save("12_kawaii_jump")
 				_advance()
 			elif timer > 0.85:
-				# Force a readable mid-air stretch pose for media
-				player.global_position = Vector2(260, -160)
-				player.velocity = Vector2(40, -260)
-				player.leg_len = 1.85
-				player.arm_len = 1.45
+				# High enough that long legs stay clearly off the ground
+				player.global_position = Vector2(240, -220)
+				player.velocity = Vector2(20, -180)
+				player.leg_len = 1.9
+				player.arm_len = 1.5
 				player.leg_len_vel = 0.0
 				player.arm_len_vel = 0.0
-				player.torso_sy = 1.12
+				player.torso_sy = 1.1
 				player.is_crouching = false
-				pending_shot = "03_jump_legs_long"
-		2:
+				pending_shot = "12_kawaii_jump"
+		3:
 			player.set_touch_axis(0.35)
 			if timer > 1.0:
 				player.set_touch_axis(0.0)
 				_advance()
-		3:
-			# Plant on open ground; disable pipes so ↓ crouch does not warp
+		4:
 			if timer < 0.1:
 				for p in get_tree().get_nodes_in_group("pipes"):
 					p.set("busy", true)
@@ -79,27 +86,25 @@ func _physics_process(delta: float) -> void:
 			player.set_touch_down(true)
 			var leg := float(player.leg_len)
 			if timer > 0.6 and leg <= 0.65:
-				print("DEMO crouch pose at ", player.global_position, " leg=", leg)
-				_save("04_crouch_legs_short")
+				_save("13_kawaii_crouch")
 				player.set_touch_down(false)
 				_advance()
 			elif timer > 1.4:
-				print("DEMO crouch fallback at ", player.global_position, " leg=", leg)
-				_save("04_crouch_legs_short")
+				_save("13_kawaii_crouch")
 				player.set_touch_down(false)
-				_advance()
-		4:
-			player.set_touch_axis(1.0)
-			if timer > 0.8:
-				player.press_tongue()
-				_save("05_tongue_biped")
 				_advance()
 		5:
 			player.set_touch_axis(1.0)
-			if timer > 1.2:
-				_save("06_stage_biped")
+			if timer > 0.8:
+				player.press_tongue()
+				_save("14_kawaii_tongue")
 				_advance()
 		6:
+			player.set_touch_axis(1.0)
+			if timer > 1.2:
+				_save("15_kawaii_stage")
+				_advance()
+		7:
 			print("DEMO: complete shots=", shots, " dir=", out_dir)
 			get_tree().quit(0)
 
