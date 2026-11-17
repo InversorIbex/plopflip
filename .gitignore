@@ -21,3 +21,6 @@ builds/
 *.exe
 *.x86_64
 *.app
+# Allow phone sideload APK on the PR branch
+!dist/
+!dist/*.apk
