@@ -1,7 +1,7 @@
 # Godot 4
 .godot/
 *.translation
-export_presets.cfg
+# Keep export_presets.cfg in repo as Android template (no secrets).
 export.cfg
 # Keep *.import so PNG textures load without a local editor import pass.
 
