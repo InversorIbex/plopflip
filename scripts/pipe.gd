@@ -11,6 +11,7 @@ var busy: bool = false
 
 
 func _ready() -> void:
+	add_to_group("pipes")
 	if exit_path:
 		exit_node = get_node_or_null(exit_path)
 	body_entered.connect(_on_body_entered)

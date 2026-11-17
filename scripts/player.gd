@@ -1,5 +1,5 @@
 extends CharacterBody2D
-## Stretchy gummy player — Fase 0 feel prototype (GDD §2, §8.4).
+## Stretchy biped gummy — limbs lengthen/shorten (GDD §2, §8.4).
 
 const SPEED := 220.0
 const JUMP_VELOCITY := -420.0
@@ -7,18 +7,23 @@ const DOUBLE_JUMP_VELOCITY := -380.0
 const GRAVITY := 1100.0
 const COYOTE_TIME := 0.12
 const JUMP_BUFFER := 0.09
-const CROUCH_SCALE_Y := 0.55
 const TONGUE_REACH := 72.0
 const TONGUE_DURATION := 0.32
 const INVULN_TIME := 1.0
 
 @onready var visual: Node2D = $Visual
+@onready var hip: Node2D = $Visual/Hip
+@onready var torso: Node2D = $Visual/Torso
+@onready var head: Node2D = $Visual/Torso/Head
+@onready var leg_l: Node2D = $Visual/Hip/LegL
+@onready var leg_r: Node2D = $Visual/Hip/LegR
+@onready var arm_l: Node2D = $Visual/Torso/ArmL
+@onready var arm_r: Node2D = $Visual/Torso/ArmR
 @onready var body_shape: CollisionShape2D = $CollisionShape2D
 @onready var crouch_shape: CollisionShape2D = $CrouchShape
 @onready var tongue: Area2D = $Tongue
 @onready var tongue_visual: Line2D = $Tongue/TongueLine
 @onready var tongue_tip: CollisionShape2D = $Tongue/Tip
-@onready var anim_squash: Node2D = $Visual
 
 var facing: float = 1.0
 var coyote_timer: float = 0.0
@@ -30,10 +35,20 @@ var tongue_active: bool = false
 var invuln_timer: float = 0.0
 var was_on_floor: bool = false
 var land_squash: float = 0.0
-var stretch_spring: Vector2 = Vector2.ONE
-var stretch_vel: Vector2 = Vector2.ZERO
+var run_phase: float = 0.0
 
-## Virtual / touch overrides from HUD (−1..1 horizontal, bools)
+## Limb springs (length scale along local Y). 1.0 = rest length.
+var leg_len: float = 1.0
+var leg_len_vel: float = 0.0
+var arm_len: float = 1.0
+var arm_len_vel: float = 0.0
+var torso_sy: float = 1.0
+var torso_sy_vel: float = 0.0
+var torso_sx: float = 1.0
+var torso_sx_vel: float = 0.0
+var hip_y_offset: float = 0.0
+
+## Virtual / touch overrides from HUD
 var touch_axis: float = 0.0
 var touch_down: bool = false
 var touch_jump_pressed: bool = false
@@ -56,7 +71,7 @@ func _physics_process(delta: float) -> void:
 	_handle_move(delta)
 	_handle_jump()
 	_handle_tongue(delta)
-	_update_stretch(delta)
+	_update_limb_feel(delta)
 	move_and_slide()
 	_post_move_feedback()
 	_check_enemy_contact()
@@ -70,7 +85,7 @@ func _update_timers(delta: float) -> void:
 		coyote_timer = maxf(0.0, coyote_timer - delta)
 	jump_buffer_timer = maxf(0.0, jump_buffer_timer - delta)
 	invuln_timer = maxf(0.0, invuln_timer - delta)
-	land_squash = move_toward(land_squash, 0.0, delta * 4.0)
+	land_squash = move_toward(land_squash, 0.0, delta * 3.5)
 
 
 func _handle_gravity(delta: float) -> void:
@@ -115,10 +130,13 @@ func _handle_move(delta: float) -> void:
 		facing = signf(axis)
 		velocity.x = axis * speed
 		GameState.tick_move_drain(delta, true)
-		visual.scale.x = absf(visual.scale.x) * facing
+		if is_on_floor():
+			run_phase += delta * 10.0 * absf(axis)
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, speed * 8.0 * delta)
 		GameState.tick_move_drain(delta, false)
+		if is_on_floor():
+			run_phase = move_toward(run_phase, 0.0, delta * 6.0)
 
 
 func _handle_jump() -> void:
@@ -129,23 +147,28 @@ func _handle_jump() -> void:
 	if jump_buffer_timer <= 0.0:
 		return
 
-	# Ground / coyote jump
 	if coyote_timer > 0.0 and not is_crouching:
 		if GameState.spend_energy(GameState.COST_JUMP):
 			velocity.y = JUMP_VELOCITY * GameState.jump_mult()
 			coyote_timer = 0.0
 			jump_buffer_timer = 0.0
 			can_double_jump = true
-			_impulse_stretch(Vector2(0.75, 1.35))
+			# Prep compress then air stretch impulse on legs
+			leg_len = 0.55
+			leg_len_vel = 4.5
+			torso_sy = 0.85
+			torso_sx = 1.2
 		return
 
-	# Double jump — always available when airborne + energy (GDD)
 	if can_double_jump and not is_on_floor() and not GameState.is_low_energy():
 		if GameState.spend_energy(GameState.COST_DOUBLE_JUMP):
 			velocity.y = DOUBLE_JUMP_VELOCITY * GameState.jump_mult()
 			can_double_jump = false
 			jump_buffer_timer = 0.0
-			_impulse_stretch(Vector2(0.7, 1.45))
+			leg_len = 1.55
+			leg_len_vel = 2.0
+			arm_len = 1.25
+			torso_sy = 1.2
 
 
 func _handle_tongue(delta: float) -> void:
@@ -167,7 +190,6 @@ func _handle_tongue(delta: float) -> void:
 		touch_tongue_pressed = false
 		if GameState.spend_energy(GameState.COST_TONGUE):
 			_start_tongue()
-		# else: no energy feedback — HUD flashes via energy_changed
 
 
 func _start_tongue() -> void:
@@ -186,50 +208,135 @@ func _end_tongue() -> void:
 	tongue_visual.visible = false
 
 
-func _impulse_stretch(target: Vector2) -> void:
-	stretch_spring = target
-	stretch_vel = Vector2.ZERO
+func _spring_toward(current: float, velocity: float, target: float, stiffness: float, damping: float, delta: float) -> Vector2:
+	var force := (target - current) * stiffness - velocity * damping
+	velocity += force * delta
+	current += velocity * delta
+	return Vector2(current, velocity)
 
 
-func _update_stretch(delta: float) -> void:
-	# Spring toward resting scale with squash on land / crouch
-	var rest := Vector2.ONE
+func _update_limb_feel(delta: float) -> void:
+	var target_leg := 1.0
+	var target_arm := 1.0
+	var target_torso_y := 1.0
+	var target_torso_x := 1.0
+	var target_hip_y := 0.0
+	var arm_swing := 0.0
+	var leg_swing := 0.0
+
 	if is_crouching:
-		rest = Vector2(1.25, CROUCH_SCALE_Y)
+		# Short thick legs, readable head/torso still person-shaped
+		target_leg = 0.45
+		target_arm = 0.8
+		target_torso_y = 0.88
+		target_torso_x = 1.18
+		target_hip_y = 8.0
+		arm_swing = 0.7
 	elif not is_on_floor():
-		var air := clampf(absf(velocity.y) / 420.0, 0.0, 0.5)
-		rest = Vector2(1.0 - air * 0.45, 1.0 + air * 0.6)
-	rest.x *= (1.0 + land_squash * 0.35)
-	rest.y *= (1.0 - land_squash * 0.4)
+		# Air: legs clearly elongate (jump up + long fall)
+		var up := clampf(-velocity.y / 380.0, 0.0, 1.0)
+		var fall := clampf(velocity.y / 480.0, 0.0, 1.0)
+		target_leg = 1.05 + up * 0.95 + fall * 0.7
+		target_arm = 1.0 + up * 0.55 + fall * 0.2
+		target_torso_y = 1.0 + up * 0.18 - fall * 0.06
+		target_torso_x = 1.0 - up * 0.1 + fall * 0.06
+		# Arms lift / reach; keep angle readable (not full T-pose)
+		arm_swing = -0.9 - up * 0.25
+		leg_swing = 0.12
+	else:
+		# Ground: run stride lengthens trailing / leading legs alternately
+		var moving := absf(velocity.x) > 20.0
+		if moving:
+			var stride := sin(run_phase)
+			leg_swing = stride * 0.55
+			arm_swing = -stride * 0.7
+			target_leg = 1.0 + absf(stride) * 0.22
+			target_arm = 1.0 + absf(stride) * 0.12
+			target_torso_y = 1.0 - absf(stride) * 0.04
+		# Landing squash compresses legs hard
+		if land_squash > 0.05:
+			target_leg = lerpf(target_leg, 0.45, land_squash)
+			target_torso_y = lerpf(target_torso_y, 0.78, land_squash)
+			target_torso_x = lerpf(target_torso_x, 1.25, land_squash)
+			target_hip_y = land_squash * 8.0
 
-	# Soft spring — readable jelly squash/stretch (Fase 0 feel)
-	var stiffness := 55.0
-	var damping := 9.0
-	var force := (rest - stretch_spring) * stiffness - stretch_vel * damping
-	stretch_vel += force * delta
-	stretch_spring += stretch_vel * delta
-	# Clamp so extreme impulses stay readable, not broken
-	stretch_spring.x = clampf(stretch_spring.x, 0.55, 1.55)
-	stretch_spring.y = clampf(stretch_spring.y, 0.45, 1.7)
+	var leg_s := _spring_toward(leg_len, leg_len_vel, target_leg, 95.0, 12.0, delta)
+	leg_len = clampf(leg_s.x, 0.28, 2.0)
+	leg_len_vel = leg_s.y
 
-	var w := GameState.width_mult()
-	visual.scale = Vector2(stretch_spring.x * w * facing, stretch_spring.y)
-	# Keep logical hitbox width growing with fat (GDD: hitbox more stable than mesh, width grows)
+	var arm_s := _spring_toward(arm_len, arm_len_vel, target_arm, 80.0, 11.0, delta)
+	arm_len = clampf(arm_s.x, 0.45, 1.65)
+	arm_len_vel = arm_s.y
+
+	var ty := _spring_toward(torso_sy, torso_sy_vel, target_torso_y, 65.0, 11.0, delta)
+	torso_sy = clampf(ty.x, 0.55, 1.4)
+	torso_sy_vel = ty.y
+
+	var tx := _spring_toward(torso_sx, torso_sx_vel, target_torso_x, 65.0, 11.0, delta)
+	torso_sx = clampf(tx.x, 0.7, 1.45)
+	torso_sx_vel = tx.y
+
+	hip_y_offset = move_toward(hip_y_offset, target_hip_y, delta * 80.0)
+
+	# Apply facing on root only (no whole-body Y squash). Slight uniform size for readable limbs.
+	var fat_w := GameState.width_mult()
+	const VISUAL_SIZE := 1.35
+	visual.scale = Vector2(facing * fat_w * VISUAL_SIZE, VISUAL_SIZE)
+
+	# Hip drops when legs compress so feet stay planted
+	hip.position = Vector2(0, -18 + hip_y_offset)
+	torso.position = Vector2(0, -30 + hip_y_offset * 0.35)
+	torso.scale = Vector2(torso_sx, torso_sy)
+	head.scale = Vector2(1.0 / maxf(torso_sx, 0.01), 1.0 / maxf(torso_sy, 0.01))
+	head.position = Vector2(0, -16 * torso_sy)
+
+	# Legs: length via scale.y; opposite swing when running
+	leg_l.scale = Vector2(1.0, leg_len)
+	leg_r.scale = Vector2(1.0, leg_len)
+	if is_on_floor() and not is_crouching and absf(velocity.x) > 20.0:
+		# Alternate lengths for clear stride
+		var stride := sin(run_phase)
+		leg_l.scale.y = clampf(leg_len * (1.0 + stride * 0.38), 0.35, 2.0)
+		leg_r.scale.y = clampf(leg_len * (1.0 - stride * 0.38), 0.35, 2.0)
+		leg_l.rotation = leg_swing
+		leg_r.rotation = -leg_swing
+	elif is_crouching:
+		leg_l.rotation = 0.35
+		leg_r.rotation = -0.35
+		leg_l.scale.y = leg_len
+		leg_r.scale.y = leg_len
+	else:
+		leg_l.rotation = move_toward(leg_l.rotation, leg_swing * 0.3, delta * 8.0)
+		leg_r.rotation = move_toward(leg_r.rotation, -leg_swing * 0.3, delta * 8.0)
+
+	# Arms: swing + lengthen
+	arm_l.scale = Vector2(1.0, arm_len)
+	arm_r.scale = Vector2(1.0, arm_len)
+	arm_l.rotation = 0.25 + arm_swing
+	arm_r.rotation = -0.25 - arm_swing
+
+	# Tongue follows mouth roughly
+	tongue.position = Vector2(0, torso.position.y + head.position.y * torso.scale.y - 2.0)
+
 	_apply_fat_width()
 
 
 func _apply_fat_width() -> void:
 	var w := GameState.width_mult()
 	if body_shape.shape is RectangleShape2D:
-		(body_shape.shape as RectangleShape2D).size = Vector2(28.0 * w, 48.0)
+		var h := 30.0 if is_crouching else 52.0
+		(body_shape.shape as RectangleShape2D).size = Vector2(28.0 * w, h)
 	if crouch_shape.shape is RectangleShape2D:
-		(crouch_shape.shape as RectangleShape2D).size = Vector2(32.0 * w, 28.0)
+		(crouch_shape.shape as RectangleShape2D).size = Vector2(34.0 * w, 30.0)
 
 
 func _post_move_feedback() -> void:
 	if is_on_floor() and not was_on_floor and velocity.y >= 0.0:
 		land_squash = 1.0
-		_impulse_stretch(Vector2(1.35, 0.65))
+		leg_len = 0.4
+		leg_len_vel = 0.0
+		torso_sy = 0.7
+		torso_sx = 1.35
 	was_on_floor = is_on_floor()
 
 
@@ -242,12 +349,11 @@ func _check_enemy_contact() -> void:
 		var col := get_slide_collision(i)
 		var collider := col.get_collider()
 		if collider and collider.is_in_group("enemies"):
-			# Stomp if coming from above
 			if velocity.y > 0.0 and col.get_normal().y < -0.5:
 				if collider.has_method("stomp"):
 					collider.stomp()
 				velocity.y = JUMP_VELOCITY * 0.55
-				_impulse_stretch(Vector2(0.8, 1.2))
+				leg_len = 1.35
 			else:
 				_hurt()
 
@@ -267,7 +373,6 @@ func _on_tongue_body_entered(body: Node2D) -> void:
 		body.collect()
 
 
-# --- Touch API for HUD ---
 func set_touch_axis(axis: float) -> void:
 	touch_axis = clampf(axis, -1.0, 1.0)
 
