@@ -1,0 +1,38 @@
+[gd_scene load_steps=3 format=3 uid="uid://gomflip_caramelo"]
+
+[ext_resource type="Script" path="res://scripts/caramelo.gd" id="1_car"]
+
+[sub_resource type="CircleShape2D" id="Hit"]
+radius = 13.0
+
+[node name="Caramelo" type="Area2D" groups=["pickups"]]
+collision_layer = 8
+collision_mask = 2
+monitoring = true
+monitorable = true
+script = ExtResource("1_car")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Hit")
+
+[node name="Visual" type="Node2D" parent="."]
+
+[node name="Glow" type="Polygon2D" parent="Visual"]
+color = Color(1, 0.7, 0.85, 0.25)
+polygon = PackedVector2Array(0, -14, 10, -6, 10, 6, 0, 14, -10, 6, -10, -6)
+
+[node name="Candy" type="Polygon2D" parent="Visual"]
+color = Color(1, 0.55, 0.75, 1)
+polygon = PackedVector2Array(0, -11, 9, -4, 9, 4, 0, 11, -9, 4, -9, -4)
+
+[node name="Shine" type="Polygon2D" parent="Visual"]
+color = Color(1, 1, 1, 0.55)
+polygon = PackedVector2Array(-4, -6, 0, -8, 2, -4, -2, -2)
+
+[node name="WrapperL" type="Polygon2D" parent="Visual"]
+color = Color(1, 0.82, 0.35, 1)
+polygon = PackedVector2Array(-9, -3, -16, -8, -15, 8, -9, 3)
+
+[node name="WrapperR" type="Polygon2D" parent="Visual"]
+color = Color(1, 0.82, 0.35, 1)
+polygon = PackedVector2Array(9, -3, 16, -8, 15, 8, 9, 3)
