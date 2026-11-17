@@ -1,8 +1,10 @@
 extends Area2D
-## Pipe / tube warp stub — hold ↓ (or interact) on entrance to teleport (GDD §3.1).
+## Pipe / tube warp — hold ↓ on entrance to teleport (GDD §3.1).
 
 @export var exit_path: NodePath
 @export var suck_duration: float = 0.35
+var warp_target: Vector2 = Vector2.ZERO
+var use_warp_target: bool = false
 
 @onready var label: Label = $Hint
 
@@ -36,14 +38,16 @@ func _on_body_exited(body: Node2D) -> void:
 
 
 func _process(_delta: float) -> void:
-	if busy or exit_node == null:
+	if busy:
+		return
+	if exit_node == null and not use_warp_target:
 		return
 	var players := get_overlapping_bodies()
 	for p in players:
 		if not p.is_in_group("player"):
 			continue
 		var wants := Input.is_action_pressed("move_down") or Input.is_action_just_pressed("interact")
-		if p.has_method("set_touch_down") and p.get("touch_down"):
+		if p.get("touch_down"):
 			wants = true
 		if wants:
 			_warp(p)
@@ -54,10 +58,11 @@ func _warp(player: Node2D) -> void:
 	busy = true
 	if label:
 		label.visible = false
+	var dest := warp_target if use_warp_target else exit_node.global_position
 	var tween := create_tween()
 	tween.tween_property(player, "scale", Vector2(0.2, 0.2), suck_duration * 0.5)
 	tween.tween_callback(func() -> void:
-		player.global_position = exit_node.global_position
+		player.global_position = dest
 		player.scale = Vector2(0.2, 0.2)
 		if player is CharacterBody2D:
 			(player as CharacterBody2D).velocity = Vector2.ZERO

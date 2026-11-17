@@ -1,42 +1,28 @@
-# gomFlip (plopflip)
+# gomFlip
 
-**Fase 0 — feel prototype** for a stretchy gummy 2D platformer (Godot 4, Android landscape).
+Platformer 2D Android (landscape) — gominola elástica, lengua, caramelos y mundos dulces.
 
-## Open in Godot
+**Motor:** Godot 4.3+  
+**GDD:** ver Project store `docs/game-design.md`
 
-1. Install **Godot 4.3+**.
-2. Import this folder as a project (`project.godot` at repo root).
-3. Press **F5** / Play. Main scene: `scenes/main.tscn`.
+## Cómo jugar
 
-## Controls
+1. Abrir la carpeta en Godot 4.3+
+2. Ejecutar `scenes/main.tscn`
+3. Demo captura: `godot --path . --rendering-driver opengl3 -- --demo`
 
-| Input | Action |
-|-------|--------|
-| A / D or ← / → | Move |
-| S / ↓ | Crouch; enter pipe when on a tube |
-| Space / W | Jump / double jump |
-| J / LMB | Tongue attack |
-| E | Interact (pipe) |
-| On-screen pad + A/B/↓ | Touch landscape HUD |
+**Controles:** A/D mover · S agachar/tubo · Space salto · J lengua · pad táctil + A/B
 
-## Fase 0 contents
+## Contenido
 
-- Squash/stretch gummy player (run, jump, crouch, double jump always on)
-- Energy (caramelos) drains on move/jump and more on tongue
-- Gradual fat stacks + water drop slim
-- Short stage with multi-height platforms, pipe warp stub, Masticón enemy
-- Landscape HUD + virtual controls
+- 3 dificultades (Fácil / Medio / Difícil)
+- 3 mundos × 4 stages (fábrica, jardín, alcantarillas)
+- Stretch jelly unificado, doble salto, lengua, enemigos E1–E3
+- Caramelos / engordantes / gotas / estrellas / score
+- Colores + cosméticos de 8 temporadas (siempre disponibles)
+- Menús: título, dificultad, mapa, cosméticos, pausa, resultados
+- Preset export Android (`export_presets.cfg`)
 
-See the approved GDD in the project docs store for locked product rules.
+## Build Android
 
-## Demo capture
-
-```bash
-godot4 --path . --rendering-driver opengl3 -- --demo
-```
-
-Saves PNGs under Godot `user://fase0_demo/` (path printed in the console).
-
-## Out of scope (later phases)
-
-Worlds, difficulties, cosmetics shop, monetization, full enemy roster.
+Requiere Android SDK + plantillas de export Godot. Preset: **Android** → `build/gomFlip.apk`, orientation landscape vía `project.godot` (`window/handheld/orientation=4`).

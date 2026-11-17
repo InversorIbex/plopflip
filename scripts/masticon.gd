@@ -29,7 +29,7 @@ func _physics_process(delta: float) -> void:
 		direction *= -1.0
 		visual.scale.x = absf(visual.scale.x) * direction
 
-	velocity.x = direction * PATROL_SPEED
+	velocity.x = direction * PATROL_SPEED * GameState.enemy_speed_mult()
 	move_and_slide()
 	# Gentle wobble
 	visual.rotation = sin(Time.get_ticks_msec() * 0.008) * 0.08

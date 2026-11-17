@@ -22,6 +22,18 @@ var limb_r: float = 6.0
 var fat_w: float = 1.0
 
 var _disks: Array = []
+var _head_cosmetic: String = "none"
+var _torso_cosmetic: String = "none"
+var _neck_cosmetic: String = "none"
+
+
+func apply_cosmetics(tint: Color, head_id: String, torso_id: String, neck_id: String) -> void:
+	jelly_color = tint
+	jelly_deep = Color(tint.r * 0.72, tint.g * 0.55, tint.b * 0.65, 1.0)
+	_head_cosmetic = head_id
+	_torso_cosmetic = torso_id
+	_neck_cosmetic = neck_id
+	queue_redraw()
 
 
 func set_pose(
@@ -112,7 +124,63 @@ func _draw() -> void:
 	draw_circle(head_c + Vector2(-5, -4), head_r * 0.5, Color(1, 1, 1, 0.26))
 	draw_circle(torso_c + Vector2(-3, 1), maxf(torso_rx, torso_ry) * 0.7, Color(1, 0.88, 0.94, 0.15))
 
+	_draw_cosmetics()
 	_draw_face()
+
+
+func _draw_cosmetics() -> void:
+	match _neck_cosmetic:
+		"otono_bufanda":
+			draw_circle(hip_c + Vector2(0, -6), 10.0, Color(0.85, 0.45, 0.2, 0.9))
+			draw_circle(hip_c + Vector2(8, -2), 5.0, Color(0.9, 0.55, 0.2, 0.85))
+		"invierno_bufanda":
+			draw_circle(hip_c + Vector2(0, -6), 10.0, Color(0.85, 0.92, 1.0, 0.95))
+			draw_circle(hip_c + Vector2(10, 0), 4.5, Color(0.75, 0.85, 1.0, 0.9))
+	match _torso_cosmetic:
+		"navidad_jersey":
+			draw_circle(torso_c, torso_rx * 1.1, Color(0.85, 0.15, 0.2, 0.55))
+			draw_circle(torso_c + Vector2(0, 4), 3.0, Color(1, 1, 1, 0.8))
+		"halloween_capa":
+			draw_colored_polygon(PackedVector2Array([
+				shoulder_l + Vector2(-4, 0), shoulder_r + Vector2(4, 0),
+				hip_c + Vector2(14, 18), hip_c + Vector2(-14, 18)
+			]), Color(0.2, 0.08, 0.28, 0.75))
+		"carnaval_confeti":
+			for i in 5:
+				var o := Vector2(cos(i * 1.3) * 12, sin(i * 1.7) * 8)
+				draw_circle(torso_c + o, 2.2, Color(1, 0.4 + i * 0.1, 0.3, 0.85))
+		"verano_flotador":
+			draw_arc(hip_c + Vector2(0, 2), 14.0, 0, TAU, 18, Color(1.0, 0.35, 0.25, 0.9), 5.0, true)
+	match _head_cosmetic:
+		"navidad_gorro":
+			draw_colored_polygon(PackedVector2Array([
+				head_c + Vector2(-12, -6), head_c + Vector2(10, -8), head_c + Vector2(2, -26)
+			]), Color(0.9, 0.15, 0.2))
+			draw_circle(head_c + Vector2(2, -26), 3.5, Color(1, 1, 1))
+		"halloween_bruja":
+			draw_colored_polygon(PackedVector2Array([
+				head_c + Vector2(-16, -4), head_c + Vector2(16, -4), head_c + Vector2(0, -28)
+			]), Color(0.25, 0.12, 0.4))
+		"patricio_sombrero":
+			draw_circle(head_c + Vector2(0, -10), 9.0, Color(0.2, 0.65, 0.3))
+			draw_rect(Rect2(head_c + Vector2(-12, -12), Vector2(24, 5)), Color(0.15, 0.5, 0.22))
+		"carnaval_antifaz":
+			draw_circle(head_c + Vector2(-6, -1), 5.0, Color(0.55, 0.2, 0.85, 0.85))
+			draw_circle(head_c + Vector2(6, -1), 5.0, Color(0.55, 0.2, 0.85, 0.85))
+		"verano_gafas":
+			draw_circle(head_c + Vector2(-6, 0), 5.5, Color(0.1, 0.1, 0.15, 0.85))
+			draw_circle(head_c + Vector2(6, 0), 5.5, Color(0.1, 0.1, 0.15, 0.85))
+			draw_line(head_c + Vector2(-1, 0), head_c + Vector2(1, 0), Color(0.1, 0.1, 0.15), 2.0)
+		"otono_bellota":
+			draw_circle(head_c + Vector2(0, -12), 8.0, Color(0.55, 0.32, 0.12))
+			draw_circle(head_c + Vector2(0, -18), 3.0, Color(0.35, 0.55, 0.2))
+		"invierno_orejeras":
+			draw_circle(head_c + Vector2(-12, 2), 6.0, Color(0.95, 0.95, 1.0))
+			draw_circle(head_c + Vector2(12, 2), 6.0, Color(0.95, 0.95, 1.0))
+		"primavera_corona":
+			for i in 6:
+				var a := -PI * 0.5 + i * TAU / 6.0
+				draw_circle(head_c + Vector2(cos(a), sin(a)) * 14.0 + Vector2(0, -4), 3.2, Color(1.0, 0.45, 0.7))
 
 
 func _draw_face() -> void:

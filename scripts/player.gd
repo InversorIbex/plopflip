@@ -60,7 +60,9 @@ func _ready() -> void:
 	tongue_visual.visible = false
 	crouch_shape.disabled = true
 	_apply_fat_width()
+	apply_cosmetics()
 	GameState.fat_changed.connect(func(_s: int) -> void: _apply_fat_width())
+	GameState.cosmetics_changed.connect(apply_cosmetics)
 
 
 func _physics_process(delta: float) -> void:
@@ -352,6 +354,23 @@ func _post_move_feedback() -> void:
 	was_on_floor = is_on_floor()
 
 
+func apply_cosmetics() -> void:
+	if jelly and jelly.has_method("apply_cosmetics"):
+		jelly.apply_cosmetics(
+			GameState.jelly_tint(),
+			GameState.cosmetic_head,
+			GameState.cosmetic_torso,
+			GameState.cosmetic_neck
+		)
+
+
+func boost_stretch() -> void:
+	leg_len = 1.7
+	leg_len_vel = 3.0
+	torso_sy = 1.25
+	arm_len = 1.35
+
+
 func _check_enemy_contact() -> void:
 	if invuln_timer > 0.0:
 		visual.modulate.a = 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.03)
@@ -367,6 +386,8 @@ func _check_enemy_contact() -> void:
 				velocity.y = JUMP_VELOCITY * 0.55
 				leg_len = 1.35
 			else:
+				if collider.has_method("damages_on_contact") and not collider.damages_on_contact():
+					continue
 				_hurt()
 
 
