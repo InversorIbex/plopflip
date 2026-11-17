@@ -10,7 +10,7 @@ signal player_died()
 var level: Dictionary = {}
 var player: CharacterBody2D
 var camera: Camera2D
-var touch: Control
+var touch: Node
 var hud: Control
 var finished: bool = false
 var _entities: Node2D
@@ -468,16 +468,27 @@ func _spawn_ui() -> void:
 	canvas.layer = 20
 	add_child(canvas)
 	hud = preload("res://scenes/ui/hud.tscn").instantiate()
+	# HUD must not steal touches from virtual controls.
+	if hud is Control:
+		(hud as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(hud)
+	# Touch on its own higher layer so controls stay above HUD/hints.
+	var touch_layer := CanvasLayer.new()
+	touch_layer.layer = 30
+	add_child(touch_layer)
 	touch = preload("res://scenes/ui/touch_controls.tscn").instantiate()
-	canvas.add_child(touch)
+	touch_layer.add_child(touch)
 	if touch.has_method("bind_player"):
 		touch.bind_player(player)
-	# Pause button
+	# Pause button (small, top-right — does not cover action buttons)
 	var pause_btn := Button.new()
 	pause_btn.text = "II"
-	pause_btn.position = Vector2(1180, 16)
-	pause_btn.custom_minimum_size = Vector2(56, 48)
+	pause_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	pause_btn.offset_left = -72.0
+	pause_btn.offset_top = 12.0
+	pause_btn.offset_right = -12.0
+	pause_btn.offset_bottom = 60.0
+	pause_btn.focus_mode = Control.FOCUS_NONE
 	pause_btn.pressed.connect(func() -> void: get_tree().paused = true; _show_pause())
 	canvas.add_child(pause_btn)
 	pause_btn.process_mode = Node.PROCESS_MODE_ALWAYS

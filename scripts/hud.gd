@@ -36,7 +36,7 @@ func _ready() -> void:
 	_on_stars(GameState.stars_mask)
 	_on_score(GameState.stage_score)
 	if hint_label:
-		hint_label.text = "Pad · A salto · B lengua · ↓ tubo"
+		hint_label.text = "MOVE pad · JUMP · TONGUE · CROUCH"
 	var title: Label = get_node_or_null("Root/Title")
 	if title:
 		title.text = "gomFlip"

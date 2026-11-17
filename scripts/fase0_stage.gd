@@ -3,7 +3,7 @@ extends Node2D
 
 @onready var player: CharacterBody2D = $Player
 @onready var camera: Camera2D = $Camera2D
-@onready var touch: Control = $UI/TouchControls
+@onready var touch: Node = $UI/TouchControls
 
 
 func _ready() -> void:
