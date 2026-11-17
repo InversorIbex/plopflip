@@ -1,0 +1,88 @@
+[gd_scene load_steps=2 format=3 uid="uid://gomflip_touch"]
+
+[ext_resource type="Script" path="res://scripts/touch_controls.gd" id="1_touch"]
+
+[node name="TouchControls" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_touch")
+
+[node name="LeftPad" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -200.0
+offset_right = 200.0
+offset_bottom = -24.0
+grow_vertical = 0
+mouse_filter = 0
+
+[node name="Bg" type="Panel" parent="LeftPad"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+modulate = Color(1, 1, 1, 0.35)
+mouse_filter = 2
+
+[node name="Knob" type="Panel" parent="LeftPad"]
+layout_mode = 0
+offset_left = 58.0
+offset_top = 58.0
+offset_right = 118.0
+offset_bottom = 118.0
+modulate = Color(1, 0.55, 0.7, 0.7)
+mouse_filter = 2
+
+[node name="RightButtons" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -260.0
+offset_top = -220.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="Jump" type="Button" parent="RightButtons"]
+layout_mode = 0
+offset_left = 100.0
+offset_top = 90.0
+offset_right = 200.0
+offset_bottom = 190.0
+theme_override_font_sizes/font_size = 28
+text = "A"
+
+[node name="Tongue" type="Button" parent="RightButtons"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 40.0
+offset_right = 90.0
+offset_bottom = 130.0
+theme_override_font_sizes/font_size = 24
+text = "B"
+
+[node name="Down" type="Button" parent="RightButtons"]
+layout_mode = 0
+offset_left = 110.0
+offset_top = 0.0
+offset_right = 190.0
+offset_bottom = 70.0
+theme_override_font_sizes/font_size = 20
+text = "↓"
+
+[connection signal="gui_input" from="LeftPad" to="." method="_on_left_pad_gui_input"]

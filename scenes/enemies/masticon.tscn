@@ -1,0 +1,44 @@
+[gd_scene load_steps=3 format=3 uid="uid://gomflip_masticon"]
+
+[ext_resource type="Script" path="res://scripts/masticon.gd" id="1_mast"]
+
+[sub_resource type="RectangleShape2D" id="Body"]
+size = Vector2(36, 28)
+
+[node name="Masticon" type="CharacterBody2D" groups=["enemies"]]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1_mast")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -14)
+shape = SubResource("Body")
+
+[node name="Visual" type="Node2D" parent="."]
+position = Vector2(0, -14)
+
+[node name="Blob" type="Polygon2D" parent="Visual"]
+color = Color(0.55, 0.32, 0.78, 0.95)
+polygon = PackedVector2Array(-18, -10, 18, -10, 20, 10, 8, 14, -8, 14, -20, 10)
+
+[node name="EyeL" type="Polygon2D" parent="Visual"]
+color = Color(0.95, 0.9, 0.2, 1)
+polygon = PackedVector2Array(-12, -4, -4, -4, -4, 4, -12, 4)
+
+[node name="EyeR" type="Polygon2D" parent="Visual"]
+color = Color(0.95, 0.9, 0.2, 1)
+polygon = PackedVector2Array(4, -4, 12, -4, 12, 4, 4, 4)
+
+[node name="Tooth" type="Polygon2D" parent="Visual"]
+color = Color(1, 1, 1, 1)
+polygon = PackedVector2Array(-6, 6, 0, 12, 6, 6)
+
+[node name="RayLeft" type="RayCast2D" parent="."]
+position = Vector2(-18, 0)
+target_position = Vector2(0, 20)
+enabled = true
+
+[node name="RayRight" type="RayCast2D" parent="."]
+position = Vector2(18, 0)
+target_position = Vector2(0, 20)
+enabled = true

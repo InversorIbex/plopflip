@@ -1,0 +1,94 @@
+[gd_scene load_steps=2 format=3 uid="uid://gomflip_hud"]
+
+[ext_resource type="Script" path="res://scripts/hud.gd" id="1_hud"]
+
+[node name="HUD" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_hud")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TopLeft" type="VBoxContainer" parent="Root"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 12.0
+offset_right = 280.0
+offset_bottom = 140.0
+theme_override_constants/separation = 4
+
+[node name="LivesLabel" type="Label" parent="Root/TopLeft"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.95, 1)
+theme_override_font_sizes/font_size = 18
+text = "Lives ×3"
+
+[node name="EnergyLabel" type="Label" parent="Root/TopLeft"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.95, 0.85, 1)
+theme_override_font_sizes/font_size = 16
+text = "Energy 20/20"
+
+[node name="EnergyBar" type="ProgressBar" parent="Root/TopLeft"]
+custom_minimum_size = Vector2(200, 16)
+layout_mode = 2
+max_value = 20.0
+value = 20.0
+show_percentage = false
+
+[node name="FatLabel" type="Label" parent="Root/TopLeft"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.45, 1)
+theme_override_font_sizes/font_size = 16
+text = "Fat 0/5"
+
+[node name="CaramelosLabel" type="Label" parent="Root/TopLeft"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.65, 0.8, 1)
+theme_override_font_sizes/font_size = 16
+text = "Caramelos 0"
+
+[node name="Title" type="Label" parent="Root"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -120.0
+offset_top = 10.0
+offset_right = 120.0
+offset_bottom = 36.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.2, 0.12, 0.25, 1)
+theme_override_font_sizes/font_size = 22
+text = "gomFlip — Fase 0"
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="Root"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -360.0
+offset_top = -36.0
+offset_right = 360.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.15, 0.12, 0.2, 0.75)
+theme_override_font_sizes/font_size = 13
+text = "controls"
+horizontal_alignment = 1

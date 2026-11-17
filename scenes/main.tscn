@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://gomflip_main"]
+
+[ext_resource type="PackedScene" path="res://scenes/level/fase0_stage.tscn" id="1_stage"]
+
+[node name="Main" type="Node"]
+
+[node name="Fase0Stage" parent="." instance=ExtResource("1_stage")]
