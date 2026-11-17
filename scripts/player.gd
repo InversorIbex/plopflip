@@ -1,5 +1,5 @@
 extends CharacterBody2D
-## Stretchy biped gummy — limbs lengthen/shorten (GDD §2, §8.4).
+## Stretchy unified jelly — continuous silhouette, limb length springs (GDD §2, §8.4).
 
 const SPEED := 220.0
 const JUMP_VELOCITY := -420.0
@@ -12,29 +12,14 @@ const TONGUE_DURATION := 0.32
 const INVULN_TIME := 1.0
 
 @onready var visual: Node2D = $Visual
-@onready var hip: Node2D = $Visual/Hip
-@onready var torso: Node2D = $Visual/Torso
-@onready var head: Node2D = $Visual/Torso/Head
-@onready var leg_l: Node2D = $Visual/Hip/LegL
-@onready var leg_r: Node2D = $Visual/Hip/LegR
-@onready var arm_l: Node2D = $Visual/Torso/ArmL
-@onready var arm_r: Node2D = $Visual/Torso/ArmR
-@onready var foot_l: Node2D = $Visual/Hip/LegL/Foot
-@onready var foot_r: Node2D = $Visual/Hip/LegR/Foot
-@onready var hand_l: Node2D = $Visual/Torso/ArmL/Hand
-@onready var hand_r: Node2D = $Visual/Torso/ArmR/Hand
+@onready var jelly: Node2D = $Visual/JellyBody
 @onready var body_shape: CollisionShape2D = $CollisionShape2D
 @onready var crouch_shape: CollisionShape2D = $CrouchShape
 @onready var tongue: Area2D = $Tongue
 @onready var tongue_visual: Line2D = $Tongue/TongueLine
 @onready var tongue_tip: CollisionShape2D = $Tongue/Tip
 
-const LEG_REST_LEN := 52.0
-const ARM_REST_LEN := 46.0
-const HIP_BASE_Y := -20.0
-const TORSO_BASE_Y := -34.0
-const HEAD_BASE_Y := -22.0
-const VISUAL_SIZE := 1.15
+const VISUAL_SIZE := 1.2
 
 var facing: float = 1.0
 var coyote_timer: float = 0.0
@@ -48,7 +33,7 @@ var was_on_floor: bool = false
 var land_squash: float = 0.0
 var run_phase: float = 0.0
 
-## Limb springs (length scale along local Y). 1.0 = rest length.
+## Limb springs (length scale). 1.0 = rest.
 var leg_len: float = 1.0
 var leg_len_vel: float = 0.0
 var arm_len: float = 1.0
@@ -58,8 +43,11 @@ var torso_sy_vel: float = 0.0
 var torso_sx: float = 1.0
 var torso_sx_vel: float = 0.0
 var hip_y_offset: float = 0.0
+var arm_swing: float = 0.0
+var leg_swing: float = 0.0
+var leg_l_y: float = 1.0
+var leg_r_y: float = 1.0
 
-## Virtual / touch overrides from HUD
 var touch_axis: float = 0.0
 var touch_down: bool = false
 var touch_jump_pressed: bool = false
@@ -154,23 +142,19 @@ func _handle_jump() -> void:
 	if _jump_just():
 		jump_buffer_timer = JUMP_BUFFER
 	touch_jump_pressed = false
-
 	if jump_buffer_timer <= 0.0:
 		return
-
 	if coyote_timer > 0.0 and not is_crouching:
 		if GameState.spend_energy(GameState.COST_JUMP):
 			velocity.y = JUMP_VELOCITY * GameState.jump_mult()
 			coyote_timer = 0.0
 			jump_buffer_timer = 0.0
 			can_double_jump = true
-			# Prep compress then air stretch impulse on legs
 			leg_len = 0.55
 			leg_len_vel = 4.5
 			torso_sy = 0.85
 			torso_sx = 1.2
 		return
-
 	if can_double_jump and not is_on_floor() and not GameState.is_low_energy():
 		if GameState.spend_energy(GameState.COST_DOUBLE_JUMP):
 			velocity.y = DOUBLE_JUMP_VELOCITY * GameState.jump_mult()
@@ -196,7 +180,6 @@ func _handle_tongue(delta: float) -> void:
 		if tongue_timer <= 0.0:
 			_end_tongue()
 		return
-
 	if _tongue_just():
 		touch_tongue_pressed = false
 		if GameState.spend_energy(GameState.COST_TONGUE):
@@ -232,30 +215,26 @@ func _update_limb_feel(delta: float) -> void:
 	var target_torso_y := 1.0
 	var target_torso_x := 1.0
 	var target_hip_y := 0.0
-	var arm_swing := 0.0
-	var leg_swing := 0.0
+	arm_swing = 0.0
+	leg_swing = 0.0
 
 	if is_crouching:
-		# Short thick legs, readable head/torso still person-shaped
-		target_leg = 0.45
-		target_arm = 0.8
-		target_torso_y = 0.88
-		target_torso_x = 1.18
-		target_hip_y = 8.0
-		arm_swing = 0.7
+		target_leg = 0.42
+		target_arm = 0.78
+		target_torso_y = 0.86
+		target_torso_x = 1.2
+		target_hip_y = 10.0
+		arm_swing = 0.75
 	elif not is_on_floor():
-		# Air: legs clearly elongate (jump up + long fall)
 		var up := clampf(-velocity.y / 380.0, 0.0, 1.0)
 		var fall := clampf(velocity.y / 480.0, 0.0, 1.0)
 		target_leg = 1.05 + up * 0.95 + fall * 0.7
 		target_arm = 1.0 + up * 0.55 + fall * 0.2
 		target_torso_y = 1.0 + up * 0.18 - fall * 0.06
 		target_torso_x = 1.0 - up * 0.1 + fall * 0.06
-		# Arms lift / reach; keep angle readable (not full T-pose)
-		arm_swing = -0.9 - up * 0.25
+		arm_swing = -0.85 - up * 0.25
 		leg_swing = 0.12
 	else:
-		# Ground: run stride lengthens trailing / leading legs alternately
 		var moving := absf(velocity.x) > 20.0
 		if moving:
 			var stride := sin(run_phase)
@@ -264,7 +243,6 @@ func _update_limb_feel(delta: float) -> void:
 			target_leg = 1.0 + absf(stride) * 0.22
 			target_arm = 1.0 + absf(stride) * 0.12
 			target_torso_y = 1.0 - absf(stride) * 0.04
-		# Landing squash compresses legs hard
 		if land_squash > 0.05:
 			target_leg = lerpf(target_leg, 0.45, land_squash)
 			target_torso_y = lerpf(target_torso_y, 0.78, land_squash)
@@ -274,71 +252,84 @@ func _update_limb_feel(delta: float) -> void:
 	var leg_s := _spring_toward(leg_len, leg_len_vel, target_leg, 95.0, 12.0, delta)
 	leg_len = clampf(leg_s.x, 0.28, 2.0)
 	leg_len_vel = leg_s.y
-
 	var arm_s := _spring_toward(arm_len, arm_len_vel, target_arm, 80.0, 11.0, delta)
 	arm_len = clampf(arm_s.x, 0.45, 1.65)
 	arm_len_vel = arm_s.y
-
 	var ty := _spring_toward(torso_sy, torso_sy_vel, target_torso_y, 65.0, 11.0, delta)
 	torso_sy = clampf(ty.x, 0.55, 1.4)
 	torso_sy_vel = ty.y
-
 	var tx := _spring_toward(torso_sx, torso_sx_vel, target_torso_x, 65.0, 11.0, delta)
 	torso_sx = clampf(tx.x, 0.7, 1.45)
 	torso_sx_vel = tx.y
-
 	hip_y_offset = move_toward(hip_y_offset, target_hip_y, delta * 80.0)
 
-	# Facing / fat width on root only (limbs stretch separately)
-	var fat_w := GameState.width_mult()
-	visual.scale = Vector2(facing * fat_w * VISUAL_SIZE, VISUAL_SIZE)
-
-	# Hip drops when legs compress so feet stay planted
-	hip.position = Vector2(0, HIP_BASE_Y + hip_y_offset)
-	torso.position = Vector2(0, TORSO_BASE_Y + hip_y_offset * 0.35)
-	torso.scale = Vector2(torso_sx, torso_sy)
-	# Keep head round (counter torso squash) for kawaii face readability
-	head.scale = Vector2(1.0 / maxf(torso_sx, 0.01), 1.0 / maxf(torso_sy, 0.01))
-	head.position = Vector2(0, HEAD_BASE_Y)
-
-	# Legs: length via scale.y; opposite swing when running
-	var leg_l_y := leg_len
-	var leg_r_y := leg_len
+	leg_l_y = leg_len
+	leg_r_y = leg_len
 	if is_on_floor() and not is_crouching and absf(velocity.x) > 20.0:
 		var stride := sin(run_phase)
 		leg_l_y = clampf(leg_len * (1.0 + stride * 0.38), 0.35, 2.0)
 		leg_r_y = clampf(leg_len * (1.0 - stride * 0.38), 0.35, 2.0)
-		leg_l.rotation = leg_swing
-		leg_r.rotation = -leg_swing
-	elif is_crouching:
-		leg_l.rotation = 0.4
-		leg_r.rotation = -0.4
-	else:
-		leg_l.rotation = move_toward(leg_l.rotation, leg_swing * 0.3, delta * 8.0)
-		leg_r.rotation = move_toward(leg_r.rotation, -leg_swing * 0.3, delta * 8.0)
 
-	leg_l.scale = Vector2(1.0, leg_l_y)
-	leg_r.scale = Vector2(1.0, leg_r_y)
-	# Soft feet stay round while limbs stretch
-	foot_l.scale = Vector2(1.0, 1.0 / maxf(leg_l_y, 0.01))
-	foot_r.scale = Vector2(1.0, 1.0 / maxf(leg_r_y, 0.01))
-	foot_l.position = Vector2(2, LEG_REST_LEN)
-	foot_r.position = Vector2(2, LEG_REST_LEN)
-
-	# Arms: swing + lengthen
-	arm_l.scale = Vector2(1.0, arm_len)
-	arm_r.scale = Vector2(1.0, arm_len)
-	arm_l.rotation = 0.3 + arm_swing
-	arm_r.rotation = -0.3 - arm_swing
-	hand_l.scale = Vector2(1.0, 1.0 / maxf(arm_len, 0.01))
-	hand_r.scale = Vector2(1.0, 1.0 / maxf(arm_len, 0.01))
-	hand_l.position = Vector2(0, ARM_REST_LEN)
-	hand_r.position = Vector2(0, ARM_REST_LEN)
-
-	# Tongue follows mouth
-	tongue.position = Vector2(0, torso.position.y + head.position.y * torso.scale.y - 4.0)
-
+	var fat_w := GameState.width_mult()
+	visual.scale = Vector2(facing * fat_w * VISUAL_SIZE, VISUAL_SIZE)
+	_push_jelly_pose(fat_w)
 	_apply_fat_width()
+
+
+func _push_jelly_pose(fat_w: float) -> void:
+	# Rest proportions in Visual local space (feet ~ y=0)
+	var hip := Vector2(0, -16 + hip_y_offset)
+	var torso := Vector2(0, -30 + hip_y_offset * 0.35)
+	var head := Vector2(0, torso.y - 16.0 * torso_sy)
+
+	var sh_l := torso + Vector2(-11.0 * torso_sx, -1.0)
+	var sh_r := torso + Vector2(11.0 * torso_sx, -1.0)
+	# Long thin limbs so metaball grows clear arm/leg lobes of the same mass
+	var arm_rest := 38.0
+	var leg_rest := 34.0
+
+	# Angles from down (+Y); strong outward bias for arm lobes
+	var arm_ang_l := 1.05 + arm_swing
+	var arm_ang_r := -1.05 - arm_swing
+	var hand_l := sh_l + Vector2(sin(arm_ang_l), cos(arm_ang_l)) * arm_rest * arm_len
+	var hand_r := sh_r + Vector2(sin(arm_ang_r), cos(arm_ang_r)) * arm_rest * arm_len
+
+	var hip_l := hip + Vector2(-5, 1)
+	var hip_r := hip + Vector2(5, 1)
+	var leg_ang_l := 0.0
+	var leg_ang_r := 0.0
+	if is_crouching:
+		leg_ang_l = 0.55
+		leg_ang_r = -0.55
+	elif is_on_floor() and absf(velocity.x) > 20.0:
+		leg_ang_l = leg_swing
+		leg_ang_r = -leg_swing
+	else:
+		leg_ang_l = leg_swing * 0.2
+		leg_ang_r = -leg_swing * 0.2
+
+	var foot_l := hip_l + Vector2(sin(leg_ang_l), cos(leg_ang_l)) * leg_rest * leg_l_y
+	var foot_r := hip_r + Vector2(sin(leg_ang_r), cos(leg_ang_r)) * leg_rest * leg_r_y
+
+	if jelly and jelly.has_method("set_pose"):
+		jelly.set_pose(
+			head,
+			torso,
+			hip,
+			sh_l,
+			sh_r,
+			hand_l,
+			hand_r,
+			foot_l,
+			foot_r,
+			13.5,
+			10.0 * torso_sx,
+			10.0 * torso_sy,
+			4.6,
+			1.0
+		)
+
+	tongue.position = Vector2(0, head.y - 2.0)
 
 
 func _apply_fat_width() -> void:

@@ -37,15 +37,15 @@ func _physics_process(delta: float) -> void:
 			# Wait until settled idle (not landing squash)
 			player.set_touch_axis(0.0)
 			if timer > 0.7 and player.is_on_floor() and float(player.leg_len) > 0.85:
-				_save("10_kawaii_idle")
+				_save("20_unified_idle")
 				_advance()
 			elif timer > 1.5:
-				_save("10_kawaii_idle")
+				_save("20_unified_idle")
 				_advance()
 		1:
 			player.set_touch_axis(1.0)
 			if timer > 1.0:
-				_save("11_kawaii_run")
+				_save("21_unified_run")
 				_advance()
 		2:
 			player.set_touch_axis(0.15)
@@ -55,10 +55,9 @@ func _physics_process(delta: float) -> void:
 				player.press_jump()
 			var leg := float(player.leg_len)
 			if timer > 0.18 and not player.is_on_floor() and leg >= 1.2:
-				_save("12_kawaii_jump")
+				_save("22_unified_jump")
 				_advance()
 			elif timer > 0.85:
-				# High enough that long legs stay clearly off the ground
 				player.global_position = Vector2(240, -220)
 				player.velocity = Vector2(20, -180)
 				player.leg_len = 1.9
@@ -67,7 +66,7 @@ func _physics_process(delta: float) -> void:
 				player.arm_len_vel = 0.0
 				player.torso_sy = 1.1
 				player.is_crouching = false
-				pending_shot = "12_kawaii_jump"
+				pending_shot = "22_unified_jump"
 		3:
 			player.set_touch_axis(0.35)
 			if timer > 1.0:
@@ -86,23 +85,23 @@ func _physics_process(delta: float) -> void:
 			player.set_touch_down(true)
 			var leg := float(player.leg_len)
 			if timer > 0.6 and leg <= 0.65:
-				_save("13_kawaii_crouch")
+				_save("23_unified_crouch")
 				player.set_touch_down(false)
 				_advance()
 			elif timer > 1.4:
-				_save("13_kawaii_crouch")
+				_save("23_unified_crouch")
 				player.set_touch_down(false)
 				_advance()
 		5:
 			player.set_touch_axis(1.0)
 			if timer > 0.8:
 				player.press_tongue()
-				_save("14_kawaii_tongue")
+				_save("24_unified_tongue")
 				_advance()
 		6:
 			player.set_touch_axis(1.0)
 			if timer > 1.2:
-				_save("15_kawaii_stage")
+				_save("25_unified_stage")
 				_advance()
 		7:
 			print("DEMO: complete shots=", shots, " dir=", out_dir)
