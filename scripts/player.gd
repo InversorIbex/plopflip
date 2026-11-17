@@ -288,12 +288,12 @@ func _push_jelly_pose(fat_w: float) -> void:
 	var sh_l := torso + Vector2(-11.0 * torso_sx, -1.0)
 	var sh_r := torso + Vector2(11.0 * torso_sx, -1.0)
 	# Long thin limbs so metaball grows clear arm/leg lobes of the same mass
-	var arm_rest := 42.0
-	var leg_rest := 36.0
+	var arm_rest := 46.0
+	var leg_rest := 38.0
 
 	# Angles from down (+Y); strong outward bias for arm lobes
-	var arm_ang_l := 1.15 + arm_swing
-	var arm_ang_r := -1.15 - arm_swing
+	var arm_ang_l := 1.25 + arm_swing
+	var arm_ang_r := -1.25 - arm_swing
 	var hand_l := sh_l + Vector2(sin(arm_ang_l), cos(arm_ang_l)) * arm_rest * arm_len
 	var hand_r := sh_r + Vector2(sin(arm_ang_r), cos(arm_ang_r)) * arm_rest * arm_len
 
@@ -325,10 +325,10 @@ func _push_jelly_pose(fat_w: float) -> void:
 			hand_r,
 			foot_l,
 			foot_r,
-			13.5,
-			11.0 * torso_sx,
-			10.5 * torso_sy,
-			6.4,
+			13.0,
+			10.0 * torso_sx,
+			9.5 * torso_sy,
+			6.8,
 			1.0
 		)
 

@@ -2,6 +2,7 @@ extends Node2D
 ## Builds and runs one stage from LevelCatalog data.
 
 const LevelCatalog = preload("res://scripts/level_catalog.gd")
+const CandyDraw = preload("res://scripts/candy_draw.gd")
 
 signal stage_finished(result: Dictionary)
 signal player_died()
@@ -59,52 +60,175 @@ func _process(delta: float) -> void:
 
 func _build_backdrop() -> void:
 	var sky_c: Color = level.get("sky", Color(0.6, 0.8, 0.95))
-	var bg := Polygon2D.new()
-	bg.z_index = -20
-	bg.color = sky_c
 	var length: float = level.get("length", 2400.0)
-	bg.polygon = PackedVector2Array([
-		Vector2(-300, -900), Vector2(length + 400, -900),
-		Vector2(length + 400, 500), Vector2(-300, 500)
-	])
-	add_child(bg)
 	var theme: String = level.get("theme", "factory")
-	for i in 7:
-		var hill := Polygon2D.new()
-		hill.z_index = -18
-		var x := i * 360.0 - 100.0
-		match theme:
-			"sewer":
-				hill.color = Color(0.18, 0.22, 0.3, 0.8)
-			"garden":
-				hill.color = Color(0.4, 0.75, 0.45, 0.5)
-			_:
-				hill.color = Color(0.7, 0.9, 0.75, 0.5)
-		hill.polygon = PackedVector2Array([
-			Vector2(x, 40), Vector2(x + 200, -70 - (i % 3) * 25), Vector2(x + 400, 40)
+
+	# Gradient sky bands
+	var bands := 5
+	for b in bands:
+		var band := Polygon2D.new()
+		band.z_index = -22
+		var t := float(b) / float(bands)
+		var c := sky_c.lerp(sky_c.darkened(0.18), t * 0.55)
+		if theme == "sewer":
+			c = Color(0.16, 0.2, 0.3).lerp(Color(0.28, 0.34, 0.42), 1.0 - t)
+		elif theme == "garden":
+			c = Color(0.55, 0.88, 0.95).lerp(Color(0.7, 0.92, 0.75), t)
+		band.color = c
+		var y0 := -900.0 + t * 1200.0
+		var y1 := -900.0 + (t + 1.0 / bands) * 1200.0
+		band.polygon = PackedVector2Array([
+			Vector2(-300, y0), Vector2(length + 400, y0),
+			Vector2(length + 400, y1), Vector2(-300, y1)
 		])
-		add_child(hill)
-	# Title banner
+		add_child(band)
+
+	match theme:
+		"factory":
+			_deco_factory(length)
+		"garden":
+			_deco_garden(length)
+		"sewer":
+			_deco_sewer(length)
+
 	var label := Label.new()
 	label.text = str(level.get("title", "Stage"))
-	label.position = Vector2(40, -360)
-	label.add_theme_font_size_override("font_size", 22)
-	label.modulate = Color(0.15, 0.12, 0.2, 0.85) if theme != "sewer" else Color(0.9, 0.95, 1.0, 0.8)
+	label.position = Vector2(48, -380)
+	label.add_theme_font_size_override("font_size", 24)
+	label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.7))
+	label.add_theme_constant_override("outline_size", 4)
+	label.modulate = Color(0.2, 0.12, 0.25, 0.95) if theme != "sewer" else Color(0.95, 0.9, 1.0, 0.9)
 	add_child(label)
+
+
+func _deco_factory(length: float) -> void:
+	for i in 8:
+		var hill := Polygon2D.new()
+		hill.z_index = -18
+		var x := i * 340.0 - 80.0
+		hill.color = Color(0.78, 0.9, 0.82, 0.55)
+		hill.polygon = PackedVector2Array([
+			Vector2(x, 50), Vector2(x + 180, -60 - (i % 3) * 22), Vector2(x + 360, 50)
+		])
+		add_child(hill)
+	# Candy molds / conveyors silhouettes
+	for i in 5:
+		var mold := Polygon2D.new()
+		mold.z_index = -12
+		var x := 180.0 + i * 420.0
+		mold.color = Color(0.95, 0.7, 0.8, 0.35)
+		mold.polygon = PackedVector2Array([
+			Vector2(x, -320), Vector2(x + 90, -320), Vector2(x + 90, -200), Vector2(x, -200)
+		])
+		add_child(mold)
+		var gear := Polygon2D.new()
+		gear.z_index = -11
+		gear.position = Vector2(x + 45, -260)
+		gear.color = Color(1.0, 0.85, 0.4, 0.4)
+		var pts := PackedVector2Array()
+		for k in 8:
+			var a := k * TAU / 8.0
+			pts.append(Vector2(cos(a), sin(a)) * (18.0 if k % 2 == 0 else 12.0))
+		gear.polygon = pts
+		add_child(gear)
+	# Soft sun
+	var sun := Polygon2D.new()
+	sun.z_index = -19
+	sun.position = Vector2(length * 0.7, -520)
+	sun.color = Color(1.0, 0.92, 0.55, 0.55)
+	var sp := PackedVector2Array()
+	for k in 16:
+		sp.append(Vector2(cos(k * TAU / 16.0), sin(k * TAU / 16.0)) * 70.0)
+	sun.polygon = sp
+	add_child(sun)
+
+
+func _deco_garden(length: float) -> void:
+	for i in 9:
+		var hill := Polygon2D.new()
+		hill.z_index = -18
+		var x := i * 300.0 - 60.0
+		hill.color = Color(0.45, 0.82, 0.55, 0.5)
+		hill.polygon = PackedVector2Array([
+			Vector2(x, 40), Vector2(x + 150, -90 - (i % 4) * 18), Vector2(x + 300, 40)
+		])
+		add_child(hill)
+	# Jelly bushes / flowers
+	for i in 12:
+		var bush := Polygon2D.new()
+		bush.z_index = -10
+		var x := 100.0 + i * 190.0
+		bush.position = Vector2(x, -8)
+		bush.color = Color(0.55, 0.9, 0.65, 0.75)
+		bush.polygon = PackedVector2Array([
+			Vector2(-22, 8), Vector2(-18, -18), Vector2(0, -28), Vector2(18, -18), Vector2(22, 8)
+		])
+		add_child(bush)
+		var flower := Polygon2D.new()
+		flower.z_index = -9
+		flower.position = Vector2(x, -36)
+		flower.color = Color(1.0, 0.55, 0.75, 0.85)
+		var fp := PackedVector2Array()
+		for k in 6:
+			fp.append(Vector2(cos(k * TAU / 6.0), sin(k * TAU / 6.0)) * 8.0)
+		flower.polygon = fp
+		add_child(flower)
+
+
+func _deco_sewer(length: float) -> void:
+	# Brick wall bands
+	for i in 6:
+		var wall := Polygon2D.new()
+		wall.z_index = -18
+		var x := i * 420.0 - 100.0
+		wall.color = Color(0.28, 0.32, 0.4, 0.85)
+		wall.polygon = PackedVector2Array([
+			Vector2(x, -500), Vector2(x + 380, -500), Vector2(x + 380, 80), Vector2(x, 80)
+		])
+		add_child(wall)
+		for row in 8:
+			for col in 4:
+				var brick := Polygon2D.new()
+				brick.z_index = -17
+				brick.color = Color(0.32, 0.36, 0.45, 0.5)
+				var bx := x + 20 + col * 90.0 + (20 if row % 2 == 0 else 0)
+				var by := -460 + row * 55.0
+				brick.polygon = PackedVector2Array([
+					Vector2(bx, by), Vector2(bx + 70, by), Vector2(bx + 70, by + 28), Vector2(bx, by + 28)
+				])
+				add_child(brick)
+	# Dripping slime accents
+	for i in 7:
+		var drip := Polygon2D.new()
+		drip.z_index = -8
+		var x := 220.0 + i * 320.0
+		drip.color = Color(0.45, 0.85, 0.55, 0.55)
+		drip.polygon = PackedVector2Array([
+			Vector2(x, -200), Vector2(x + 24, -200), Vector2(x + 18, -140), Vector2(x + 6, -140)
+		])
+		add_child(drip)
 
 
 func _build_geometry() -> void:
 	var ground_c: Color = level.get("ground", Color(0.4, 0.3, 0.5))
 	var plat_c: Color = level.get("plat", Color(0.95, 0.55, 0.7))
+	var icing := plat_c.lightened(0.35)
+	var theme: String = level.get("theme", "factory")
+	match theme:
+		"garden":
+			icing = Color(0.85, 0.98, 0.9)
+		"sewer":
+			icing = Color(0.55, 0.75, 0.6)
 	var plats: Array = level.get("platforms", [])
 	for i in plats.size():
 		var r: Rect2 = plats[i]
-		var c := ground_c if i == 0 or r.size.y >= 40 else plat_c
-		_add_platform(r, c)
+		var is_ground := i == 0 or r.size.y >= 40
+		var c := ground_c if is_ground else plat_c
+		CandyDraw.add_candy_platform(self, r, c, icing if not is_ground else c.lightened(0.2), is_ground)
 	for crawl in level.get("crawl", []):
-		_add_platform(crawl, plat_c.darkened(0.15))
+		CandyDraw.add_candy_platform(self, crawl, plat_c.darkened(0.12), icing.darkened(0.05), false)
 	for stair in level.get("stairs", []):
-		_add_stairs(stair, plat_c)
+		_add_stairs(stair, plat_c, icing)
 	for t in level.get("trampolines", []):
 		_add_trampoline(t)
 	for w in level.get("water", []):
@@ -113,36 +237,20 @@ func _build_geometry() -> void:
 		_add_pipe(p["from"], p["to"])
 
 
-func _add_platform(rect: Rect2, color: Color) -> void:
-	var body := StaticBody2D.new()
-	body.collision_layer = 1
-	body.position = rect.position + rect.size * 0.5
-	var shape := CollisionShape2D.new()
-	var rs := RectangleShape2D.new()
-	rs.size = rect.size
-	shape.shape = rs
-	body.add_child(shape)
-	var poly := Polygon2D.new()
-	var hx := rect.size.x * 0.5
-	var hy := rect.size.y * 0.5
-	poly.polygon = PackedVector2Array([Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)])
-	poly.color = color
-	body.add_child(poly)
-	var top := Polygon2D.new()
-	top.polygon = PackedVector2Array([Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, -hy + 5), Vector2(-hx, -hy + 5)])
-	top.color = color.lightened(0.28)
-	body.add_child(top)
-	add_child(body)
-
-
-func _add_stairs(data: Dictionary, color: Color) -> void:
+func _add_stairs(data: Dictionary, color: Color, icing: Color) -> void:
 	var x: float = data["x"]
 	var y: float = data["y"]
 	var steps: int = data["steps"]
 	var w: float = data["w"]
 	var h: float = data["h"]
 	for i in steps:
-		_add_platform(Rect2(x + i * w, y - (i + 1) * h, w + 4, h), color.lightened(0.05 * (i % 2)))
+		CandyDraw.add_candy_platform(
+			self,
+			Rect2(x + i * w, y - (i + 1) * h, w + 4, h),
+			color.lightened(0.04 * (i % 2)),
+			icing,
+			false
+		)
 
 
 func _add_trampoline(rect: Rect2) -> void:
@@ -155,12 +263,20 @@ func _add_trampoline(rect: Rect2) -> void:
 	rs.size = rect.size
 	shape.shape = rs
 	area.add_child(shape)
-	var poly := Polygon2D.new()
 	var hx := rect.size.x * 0.5
 	var hy := rect.size.y * 0.5
-	poly.polygon = PackedVector2Array([Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)])
-	poly.color = Color(0.4, 0.95, 0.7)
-	area.add_child(poly)
+	var base := Polygon2D.new()
+	base.polygon = CandyDraw.rounded_rect_poly(hx + 4, hy + 2, 6.0)
+	base.color = Color(0.25, 0.75, 0.55)
+	area.add_child(base)
+	var pad := Polygon2D.new()
+	pad.polygon = CandyDraw.rounded_rect_poly(hx, hy, 5.0)
+	pad.color = Color(0.55, 1.0, 0.75)
+	area.add_child(pad)
+	var shine := Polygon2D.new()
+	shine.polygon = PackedVector2Array([Vector2(-hx + 4, -hy + 2), Vector2(hx - 8, -hy + 2), Vector2(hx - 10, -hy + hy), Vector2(-hx + 6, -hy + hy)])
+	shine.color = Color(1, 1, 1, 0.35)
+	area.add_child(shine)
 	area.body_entered.connect(func(b: Node2D) -> void:
 		if b.is_in_group("player") and b.velocity.y >= 0.0:
 			b.velocity.y = -560.0
@@ -180,12 +296,28 @@ func _add_water(rect: Rect2) -> void:
 	rs.size = rect.size
 	shape.shape = rs
 	area.add_child(shape)
-	var poly := Polygon2D.new()
 	var hx := rect.size.x * 0.5
 	var hy := rect.size.y * 0.5
-	poly.polygon = PackedVector2Array([Vector2(-hx, -hy), Vector2(hx, -hy), Vector2(hx, hy), Vector2(-hx, hy)])
-	poly.color = Color(0.35, 0.7, 0.95, 0.55)
-	area.add_child(poly)
+	var pool := Polygon2D.new()
+	pool.polygon = CandyDraw.rounded_rect_poly(hx, hy, 8.0)
+	pool.color = Color(0.35, 0.72, 0.98, 0.55)
+	area.add_child(pool)
+	var surface := Polygon2D.new()
+	surface.polygon = PackedVector2Array([
+		Vector2(-hx + 2, -hy), Vector2(hx - 2, -hy),
+		Vector2(hx - 6, -hy + 6), Vector2(-hx + 6, -hy + 6)
+	])
+	surface.color = Color(0.75, 0.95, 1.0, 0.65)
+	area.add_child(surface)
+	# Bubbles
+	for i in 3:
+		var bub := Polygon2D.new()
+		bub.position = Vector2(-hx * 0.4 + i * hx * 0.4, 0)
+		bub.color = Color(1, 1, 1, 0.35)
+		bub.polygon = PackedVector2Array([
+			Vector2(-3, 0), Vector2(0, -3), Vector2(3, 0), Vector2(0, 3)
+		])
+		area.add_child(bub)
 	var cooled := {}
 	area.body_entered.connect(func(b: Node2D) -> void:
 		if b.is_in_group("player"):
@@ -204,14 +336,23 @@ func _add_pipe(from: Vector2, to: Vector2) -> void:
 	pipe.warp_target = to
 	pipe.use_warp_target = true
 	add_child(pipe)
-	var exit_v := Polygon2D.new()
-	exit_v.position = to
-	exit_v.color = Color(0.2, 0.55, 0.35)
-	exit_v.polygon = PackedVector2Array([
-		Vector2(-18, -28), Vector2(18, -28), Vector2(18, 8), Vector2(-18, 8)
-	])
-	exit_v.z_index = -1
-	add_child(exit_v)
+	# Cute exit pipe twin
+	var exit := Node2D.new()
+	exit.position = to
+	exit.z_index = -1
+	var tube := Polygon2D.new()
+	tube.color = Color(0.3, 0.78, 0.48)
+	tube.polygon = PackedVector2Array([-20, -44, 20, -44, 20, 4, -20, 4])
+	exit.add_child(tube)
+	var rim := Polygon2D.new()
+	rim.color = Color(0.2, 0.58, 0.35)
+	rim.polygon = PackedVector2Array([-24, -6, 24, -6, 24, 6, -24, 6])
+	exit.add_child(rim)
+	var hole := Polygon2D.new()
+	hole.color = Color(0.06, 0.14, 0.1)
+	hole.polygon = PackedVector2Array([-12, -36, 12, -36, 12, -8, -12, -8])
+	exit.add_child(hole)
+	add_child(exit)
 
 
 func _spawn_pickups() -> void:
@@ -269,14 +410,28 @@ func _spawn_goal() -> void:
 	rs.size = Vector2(40, 64)
 	shape.shape = rs
 	goal.add_child(shape)
+	var base := Polygon2D.new()
+	base.polygon = CandyDraw.rounded_rect_poly(14, 6, 4.0)
+	base.position = Vector2(0, 14)
+	base.color = Color(0.85, 0.55, 0.75)
+	goal.add_child(base)
 	var pole := Polygon2D.new()
-	pole.polygon = PackedVector2Array([Vector2(-4, -56), Vector2(4, -56), Vector2(4, 20), Vector2(-4, 20)])
-	pole.color = Color(0.9, 0.9, 0.95)
+	pole.polygon = PackedVector2Array([Vector2(-3, -58), Vector2(3, -58), Vector2(3, 14), Vector2(-3, 14)])
+	pole.color = Color(0.95, 0.92, 0.98)
 	goal.add_child(pole)
 	var flag := Polygon2D.new()
-	flag.polygon = PackedVector2Array([Vector2(4, -54), Vector2(36, -40), Vector2(4, -26)])
-	flag.color = Color(1.0, 0.85, 0.2)
+	flag.polygon = PackedVector2Array([Vector2(3, -56), Vector2(40, -40), Vector2(3, -24)])
+	flag.color = Color(1.0, 0.78, 0.25)
 	goal.add_child(flag)
+	var star := Polygon2D.new()
+	star.position = Vector2(18, -40)
+	star.color = Color(1, 1, 1, 0.85)
+	var sp := PackedVector2Array()
+	for k in 10:
+		var a := -PI * 0.5 + k * PI * 0.2
+		sp.append(Vector2(cos(a), sin(a)) * (5.0 if k % 2 == 0 else 2.2))
+	star.polygon = sp
+	goal.add_child(star)
 	goal.body_entered.connect(_on_goal)
 	add_child(goal)
 

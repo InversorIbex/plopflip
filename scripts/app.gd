@@ -13,6 +13,11 @@ func _ready() -> void:
 	ui = CanvasLayer.new()
 	ui.layer = 50
 	add_child(ui)
+	if "--demo" in OS.get_cmdline_user_args():
+		GameState.color_id = "rosa"
+		GameState.cosmetic_head = "none"
+		GameState.cosmetic_torso = "none"
+		GameState.cosmetic_neck = "none"
 	show_title()
 	if "--demo" in OS.get_cmdline_user_args():
 		await get_tree().process_frame
@@ -43,15 +48,22 @@ func _panel(size: Vector2 = Vector2(900, 560)) -> PanelContainer:
 	p.offset_right = size.x * 0.5
 	p.offset_bottom = size.y * 0.5
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.12, 0.1, 0.18, 0.94)
-	style.corner_radius_top_left = 18
-	style.corner_radius_top_right = 18
-	style.corner_radius_bottom_left = 18
-	style.corner_radius_bottom_right = 18
+	style.bg_color = Color(0.14, 0.1, 0.2, 0.92)
+	style.border_color = Color(1.0, 0.65, 0.85, 0.35)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 22
+	style.corner_radius_top_right = 22
+	style.corner_radius_bottom_left = 22
+	style.corner_radius_bottom_right = 22
 	style.content_margin_left = 28
 	style.content_margin_right = 28
 	style.content_margin_top = 22
 	style.content_margin_bottom = 22
+	style.shadow_color = Color(0.9, 0.4, 0.65, 0.25)
+	style.shadow_size = 10
 	p.add_theme_stylebox_override("panel", style)
 	return p
 
@@ -61,7 +73,9 @@ func _title_label(text: String, size: int = 36) -> Label:
 	l.text = text
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.add_theme_font_size_override("font_size", size)
-	l.add_theme_color_override("font_color", Color(1, 0.75, 0.9))
+	l.add_theme_color_override("font_color", Color(1, 0.62, 0.82))
+	l.add_theme_color_override("font_outline_color", Color(0.35, 0.1, 0.25, 0.55))
+	l.add_theme_constant_override("outline_size", 3)
 	return l
 
 
@@ -69,6 +83,28 @@ func _btn(text: String, cb: Callable, min_h: float = 48.0) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.custom_minimum_size = Vector2(0, min_h)
+	var n := StyleBoxFlat.new()
+	n.bg_color = Color(0.95, 0.45, 0.7, 0.95)
+	n.corner_radius_top_left = 12
+	n.corner_radius_top_right = 12
+	n.corner_radius_bottom_left = 12
+	n.corner_radius_bottom_right = 12
+	n.content_margin_left = 12
+	n.content_margin_right = 12
+	b.add_theme_stylebox_override("normal", n)
+	var h := n.duplicate()
+	h.bg_color = Color(1.0, 0.55, 0.78, 1.0)
+	b.add_theme_stylebox_override("hover", h)
+	var p := n.duplicate()
+	p.bg_color = Color(0.8, 0.35, 0.58, 1.0)
+	b.add_theme_stylebox_override("pressed", p)
+	var d := n.duplicate()
+	d.bg_color = Color(0.35, 0.3, 0.4, 0.7)
+	b.add_theme_stylebox_override("disabled", d)
+	b.add_theme_color_override("font_color", Color(1, 1, 1))
+	b.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	b.add_theme_color_override("font_pressed_color", Color(1, 0.95, 0.98))
+	b.add_theme_color_override("font_disabled_color", Color(0.7, 0.7, 0.75))
 	b.pressed.connect(cb)
 	return b
 
@@ -78,16 +114,29 @@ func show_title() -> void:
 	_clear_ui()
 	get_tree().paused = false
 	var bg := ColorRect.new()
-	bg.color = Color(0.55, 0.78, 0.92)
+	bg.color = Color(0.62, 0.84, 0.96)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	ui.add_child(bg)
-	# Soft hills
+	# Soft candy hills as Polygon2D via draw host
+	var hills := Control.new()
+	hills.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hills.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(hills)
+	for i in 5:
+		var poly := Polygon2D.new()
+		var x := i * 280.0 - 60.0
+		poly.color = Color(0.72, 0.92, 0.8, 0.55)
+		poly.polygon = PackedVector2Array([
+			Vector2(x, 720), Vector2(x + 140, 470 - (i % 3) * 30), Vector2(x + 300, 720)
+		])
+		hills.add_child(poly)
+	# Floating caramelos deco
 	for i in 4:
-		var hill := ColorRect.new()
-		hill.color = Color(0.7, 0.9, 0.78, 0.35)
-		hill.position = Vector2(i * 320.0 - 40.0, 480)
-		hill.size = Vector2(400, 280)
-		ui.add_child(hill)
+		var c := Polygon2D.new()
+		c.position = Vector2(700 + i * 90, 120 + (i % 2) * 40)
+		c.color = Color(1.0, 0.55, 0.75, 0.7)
+		c.polygon = PackedVector2Array([0, -10, 8, -3, 8, 3, 0, 10, -8, 3, -8, -3])
+		hills.add_child(c)
 	# Jelly mascot preview
 	var preview := Node2D.new()
 	preview.position = Vector2(320, 400)
@@ -98,11 +147,11 @@ func show_title() -> void:
 	ui.add_child(preview)
 	# Defer pose so script ready
 	jelly.call_deferred("set_pose",
-		Vector2(0, -40), Vector2(0, -24), Vector2(0, -12),
-		Vector2(-12, -28), Vector2(12, -28),
-		Vector2(-22, -4), Vector2(22, -4),
-		Vector2(-8, 8), Vector2(8, 8),
-		14.0, 12.0, 11.0, 6.0, 1.0)
+		Vector2(0, -38), Vector2(0, -24), Vector2(0, -12),
+		Vector2(-12, -26), Vector2(12, -26),
+		Vector2(-28, -2), Vector2(28, -2),
+		Vector2(-10, 10), Vector2(10, 10),
+		13.0, 10.0, 9.5, 6.8, 1.0)
 	jelly.call_deferred("apply_cosmetics", GameState.jelly_tint(), GameState.cosmetic_head, GameState.cosmetic_torso, GameState.cosmetic_neck)
 
 	var p := _panel(Vector2(520, 400))
@@ -327,6 +376,6 @@ func show_results(result: Dictionary) -> void:
 
 
 func _run_demo() -> void:
-	# Automated showcase for media/full-game
-	var demo := preload("res://scripts/full_demo_capture.gd").new()
+	# Art-pass showcase (also covers menus + worlds)
+	var demo := preload("res://scripts/art_demo_capture.gd").new()
 	add_child(demo)
